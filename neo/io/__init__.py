@@ -119,6 +119,8 @@ from neo.io.tdtio import TdtIO
 from neo.io.winedrio import WinEdrIO
 from neo.io.winwcpio import WinWcpIO
 
+from neo.io.OpenEphysIO import Open_Ephys_IO
+
 
 iolist = [AlphaOmegaIO,
           AsciiSignalIO,
@@ -139,6 +141,7 @@ iolist = [AlphaOmegaIO,
           NeuroExplorerIO,
           NeuroScopeIO,
           NeuroshareIO,
+          Open_Ephys_IO,
           PickleIO,
           PlexonIO,
           PyNNNumpyIO,
