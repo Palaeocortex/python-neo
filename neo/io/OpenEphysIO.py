@@ -60,21 +60,21 @@ class Open_Ephys_IO(BaseIO):
     has_header         = False
     is_streameable     = False
 
-    # This is for GUI stuff : a definition for parameters when reading.
-    # This dict should be keyed by object (`Block`). Each entry is a list
-    # of tuple. The first entry in each tuple is the parameter name. The
-    # second entry is a dict with keys 'value' (for default value),
-    # and 'label' (for a descriptive name).
-    # Note that if the highest-level object requires parameters,
-    # common_io_test will be skipped.
-    read_params = {
-        Segment : [
-            ('segment_duration',
-                {'value' : 0., 'label' : 'Segment size (s.)'}),
-            ('num_analogsignal',
-                {'value' : 0, 'label' : 'Number of recording points'}),
-            ],
-        }
+    # # This is for GUI stuff : a definition for parameters when reading.
+    # # This dict should be keyed by object (`Block`). Each entry is a list
+    # # of tuple. The first entry in each tuple is the parameter name. The
+    # # second entry is a dict with keys 'value' (for default value),
+    # # and 'label' (for a descriptive name).
+    # # Note that if the highest-level object requires parameters,
+    # # common_io_test will be skipped.
+    # read_params = {
+    #     Segment : [
+    #         ('segment_duration',
+    #             {'value' : 0., 'label' : 'Segment size (s.)'}),
+    #         ('num_analogsignal',
+    #             {'value' : 0, 'label' : 'Number of recording points'}),
+    #         ],
+    #     }
 
     # do not supported write so no GUI stuff
     write_params       = None
@@ -140,46 +140,7 @@ class Open_Ephys_IO(BaseIO):
                                    description=header['format'],
                                    file_origin=self.dirname)
                 seg.analogsignals += [ ana ]
-
-        seg.create_many_to_one_relationship()
+        block.segments.append(seg)
         block.create_many_to_one_relationship()
-        return seg
-
-
-    def read_analogsignal(self ,
-                          # the 2 first key arguments are imposed by neo.io API
-                          lazy = False,
-                          cascade = True,
-                          channel_index = 0,
-                          segment_duration = 15.,
-                          t_start = -1,
-                          ):
-        """
-        With this IO AnalogSignal can e acces directly with its channel number
-
-        """
-        sr = 10000.
-        sinus_freq = 3. # Hz
-        #time vector for generated signal:
-        tvect = np.arange(t_start, t_start+ segment_duration , 1./sr)
-
-
-        if lazy:
-            anasig = AnalogSignal([], units='V', sampling_rate=sr * pq.Hz,
-                                  t_start=t_start * pq.s,
-                                  channel_index=channel_index)
-            # we add the attribute lazy_shape with the size if loaded
-            anasig.lazy_shape = tvect.shape
-        else:
-            # create analogsignal (sinus of 3 Hz)
-            sig = np.sin(2*np.pi*tvect*sinus_freq + channel_index/5.*2*np.pi)+np.random.rand(tvect.size)
-            anasig = AnalogSignal(sig, units= 'V', sampling_rate=sr * pq.Hz,
-                                  t_start=t_start * pq.s,
-                                  channel_index=channel_index)
-
-        # for attributes out of neo you can annotate
-        anasig.annotate(info = 'it is a sinus of %f Hz' %sinus_freq )
-
-        return anasig
-
+        return block
 
