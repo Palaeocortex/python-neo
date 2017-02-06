@@ -99,10 +99,6 @@ class Open_Ephys_IO(BaseIO):
         """
         In this IO read by default a Block with one or many Segments.
         """
-        OEIO.loadFolderToArray(self.dirname)
-        # sampling_rate = 10000. #Hz
-        # t_start = -1.
-
 
         header=OEIO.get_header_from_folder(self.dirname)
 
@@ -120,7 +116,7 @@ class Open_Ephys_IO(BaseIO):
                        file_origin=self.dirname)
         if cascade:
             # read nested analosignal
-            data=OEIO.loadFolderToArray(self.dirname, channels='all', dtype=float)
+            data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', dtype=float)
             if data.size == 0:
                 print "Folder ", self.dirname, "is empty or can't be read"
                 return
@@ -138,7 +134,8 @@ class Open_Ephys_IO(BaseIO):
                                    name='analog signal '+ str(i),
                                    channel_index=i,
                                    description=header['format'],
-                                   file_origin=self.dirname)
+                                   file_origin= os.path.join(self.dirname,
+                                                             filelist[i]))
                 seg.analogsignals += [ ana ]
         block.segments.append(seg)
         block.create_many_to_one_relationship()
