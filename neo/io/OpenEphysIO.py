@@ -33,7 +33,7 @@ from neo.core import Block, Segment, AnalogSignal, SpikeTrain, EventArray
 # TODO find better solution
 import os, sys
 where_am_i = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, where_am_i+"../../../analysis-tools")
+sys.path.insert(0, where_am_i+"/../../../analysis-tools")
 import OpenEphys as OEIO
 
 
