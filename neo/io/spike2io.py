@@ -466,9 +466,9 @@ class HeaderReader(object):
         if name in self.dtype.names :
             if self.dtype[name].kind == 'S':
                 if PY3K:
-                    l = np.fromstring(self.array[name].decode('iso-8859-1')[0], 'u1')
+                    l = np.fromstring(self.array[name].decode('iso-8859-1')[0], 'u1')[0]
                 else:
-                    l = np.fromstring(self.array[name][0], 'u1')
+                    l = np.fromstring(self.array[name][0], 'u1')[0]
                 return self.array[name][1:l+1]
             else:
                 return self.array[name]
