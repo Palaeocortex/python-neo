@@ -32,9 +32,7 @@ from neo.core import Block, Segment, AnalogSignal, SpikeTrain, EventArray
 # need to link to open-ephys/analysis-tools
 # TODO find better solution
 import os, sys
-where_am_i = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, where_am_i+"/../../../analysis-tools")
-import OpenEphys as OEIO
+from neo.io import OpenEphys as OEIO
 
 
 # I need to subclass BaseIO
