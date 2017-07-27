@@ -30,7 +30,6 @@ from neo.io.baseio import BaseIO
 from neo.core import Block, Segment, AnalogSignal, SpikeTrain, EventArray
 
 # need to link to open-ephys/analysis-tools
-# TODO find better solution
 import os, sys
 from neo.io import OpenEphys as OEIO
 
@@ -98,7 +97,7 @@ class Open_Ephys_IO(BaseIO):
         In this IO read by default a Block with one or many Segments.
         """
 
-        header=OEIO.get_header_from_folder(self.dirname)
+        header=OEIO.get_header_from_folder(self.dirname, recording= 2)
 
 
         # create an empty block
@@ -114,7 +113,8 @@ class Open_Ephys_IO(BaseIO):
                        file_origin=self.dirname)
         if cascade:
             # read nested analosignal
-            data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', dtype=float)
+            # data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', dtype=float)
+            data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', recording= 2, dtype=float)
             if data.size == 0:
                 print "Folder ", self.dirname, "is empty or can't be read"
                 return
