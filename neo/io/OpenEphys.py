@@ -95,7 +95,8 @@ def loadFolderToArray(folderpath, channels='all', dtype=float,
     Returns: numpy array of shape (n_samples, n_channels)
     """
     # Get list of files
-    filelist = get_filelist(folderpath, source, channels, recording=None)
+    # filelist = get_filelist(folderpath, source, channels, recording=None)
+    filelist = get_filelist(folderpath, source, channels, recording)
 
     # Keep track of the time taken
     t0 = time.time()
@@ -111,7 +112,8 @@ def loadFolderToArray(folderpath, channels='all', dtype=float,
     arr_l = []
     for filename in filelist:
         arr = loadContinuous(os.path.join(folderpath, filename), dtype,
-            start_record=start_record, stop_record=stop_record, 
+            # start_record=start_record, stop_record=stop_record,
+            start_record=start_record, stop_record=None,
             verbose=verbose)['data']
         arr_l.append(arr)
     
@@ -583,13 +585,15 @@ def _get_sorted_channels(folderpath, recording=None):
         Otherwise, specify the number of the recording as an integer.
     """
     if recording is None:
-        recording_s = sorted([(f.split('_CH')[0], int(f.split('_CH')[1].split('.')[0])) for f in os.listdir(folderpath)
-                    if
-                       '.continuous' in f
-                       and '_CH' in f],
-                      key= lambda x: (x[0], int(x[1])))
-                       # and source in f.split('_CH')[0]])
-        return zip(*recording_s)
+        return sorted([int(f.split('_CH')[1].split('.')[0]) for f in os.listdir(folderpath)
+                    if '.continuous' in f and '_CH' in f])
+        # recording_s = sorted([(f.split('_CH')[0], int(f.split('_CH')[1].split('.')[0])) for f in os.listdir(folderpath)
+        #             if
+        #                '.continuous' in f
+        #                and '_CH' in f],
+        #               key= lambda x: (x[0], int(x[1])))
+        #                # and source in f.split('_CH')[0]])
+        # return zip(*recording_s)
     else:
         # Form a string from the recording number
         if recording == 1:
@@ -620,7 +624,8 @@ def get_number_of_records(filepath):
         record_length_bytes = 2 * header['blockLength'] + 22
         # some files have broken records, remove check...
         n_records = int(math.floor((fileLength - 1024) / record_length_bytes))
-#        if (n_records * record_length_bytes + 1024) != fileLength:
+        # if (n_records * record_length_bytes + 1024) != fileLength:
+        #     n_records -= 1
 #            raise IOError("file does not divide evenly into full records")
     
     return n_records
@@ -639,22 +644,38 @@ def get_filelist(folderpath, source='100', channels='all', recording=None):
         in `channels`. The filenames must be joined with `folderpath` to
         construct a full filename.
     """
-    # Get all channels if requested
-    if channels == 'all': 
-        all_sources, channels = _get_sorted_channels(folderpath, recording=recording)
-    # keep only specified source
-    channels = [chan for src, chan in zip(all_sources, channels) if src == source]
+
+        # Get all channels if requested
+    if channels == 'all':
+        channels = _get_sorted_channels(folderpath, recording=recording)
 
     # Get the list of continuous filenames
     if recording is None or recording == 1:
         # The first recording has no suffix
-        filelist = ['%s_CH%d.continuous' % (src, chan)
-            for src, chan in zip(all_sources, channels)]
+        filelist = ['%s_CH%d.continuous' % (source, chan)
+            for chan in channels]
     else:
         filelist = ['%s_CH%d_%d.continuous' % (source, chan, recording)
-            for chan in channels]    
-    
+            for chan in channels]
+
     return filelist
+
+    # # Get all channels if requested
+    # if channels == 'all':
+    #     all_sources, channels = _get_sorted_channels(folderpath, recording=recording)
+    # # keep only specified source
+    # channels = [chan for src, chan in zip(all_sources, channels) if src == source]
+    #
+    # # Get the list of continuous filenames
+    # if recording is None or recording == 1:
+    #     # The first recording has no suffix
+    #     filelist = ['%s_CH%d.continuous' % (src, chan)
+    #         for src, chan in zip(all_sources, channels)]
+    # else:
+    #     filelist = ['%s_CH%d_%d.continuous' % (source, chan, recording)
+    #         for chan in channels]
+    #
+    # return filelist
 
 def get_header_from_folder(folderpath, filelist=None, **kwargs):
     """Return the header info for all files in `folderpath`.
@@ -709,7 +730,7 @@ def get_header_from_folder(folderpath, filelist=None, **kwargs):
         # due to recording interruption, there might be a diff of 1 in rec length, which needs to be ignored
         key = 'n_records'
         if unique_header[key] != header[key]:
-            if abs(int(unique_header[key]) - int(header[key])) > 1:
+            if abs(int(unique_header[key]) - int(header[key])) > 2:
                 raise ValueError("inconsistent header info in key %s" % key)
 
 
