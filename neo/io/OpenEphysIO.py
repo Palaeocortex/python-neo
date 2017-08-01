@@ -33,6 +33,7 @@ from neo.core import Block, Segment, AnalogSignal, SpikeTrain, EventArray
 import os, sys
 from neo.io import OpenEphys as OEIO
 
+import Tkinter as tk
 
 # I need to subclass BaseIO
 class Open_Ephys_IO(BaseIO):
@@ -97,8 +98,31 @@ class Open_Ephys_IO(BaseIO):
         In this IO read by default a Block with one or many Segments.
         """
 
-        header=OEIO.get_header_from_folder(self.dirname, recording= 2)
+        # read number or recording session in the current folder
+        N_sessions = OEIO.get_number_of_recording_sessions(self.dirname)
 
+        # ask which recording session to load
+        tkroot = tk.Tk()
+        tk.Label(tkroot, text="Select the recording sessions you want to load:").pack()
+        tk.Label(tkroot, text=self.dirname).pack()
+        checkbox_var = [tk.IntVar()] * N_sessions
+        for i in range(N_sessions):
+            tk.Checkbutton(tkroot, text=i, variable=checkbox_var[i]).pack()
+        tk.Button(tkroot, text='Load', command=tkroot.quit).pack()
+        tkroot.mainloop()
+
+        headers = []
+        # load header of first recording session
+        print('reading first header...')
+        header=OEIO.get_header_from_folder(self.dirname, recording= None)
+        if header != None:
+            headers.append(header)
+        # load headers of next recording sessions
+        for i in range(2, N_sessions):
+            print('reading header...', i)
+            header = OEIO.get_header_from_folder(self.dirname, recording=i)
+            if header != None:
+                headers.append(header)
 
         # create an empty block
         block = Block( name = header['date_created'],

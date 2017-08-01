@@ -559,7 +559,7 @@ def regex_capture(pattern, list_of_strings, take_index=0):
     
     return res_l
 
-def _get_number_of_recording_sessions(folderpath):
+def get_number_of_recording_sessions(folderpath):
     """Return the number of recordings in folderpath.
 
     folderpath : string, path to location of continuous files on disk
