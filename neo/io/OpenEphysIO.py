@@ -101,29 +101,32 @@ class Open_Ephys_IO(BaseIO):
         # read number or recording session in the current folder
         N_sessions = OEIO.get_number_of_recording_sessions(self.dirname)
 
-        # ask which recording session to load
-        tkroot = tk.Tk()
-        tk.Label(tkroot, text="Select the recording sessions you want to load:").pack()
-        tk.Label(tkroot, text=self.dirname).pack()
-        checkbox_var = [tk.IntVar()] * N_sessions
-        for i in range(N_sessions):
-            tk.Checkbutton(tkroot, text=i, variable=checkbox_var[i]).pack()
-        tk.Button(tkroot, text='Load', command=tkroot.quit).pack()
-        tkroot.mainloop()
+        # # ask which recording session to load
+        # tkroot = tk.Tk()
+        # tk.Label(tkroot, text="Select the recording sessions you want to load:").pack()
+        # tk.Label(tkroot, text=self.dirname).pack()
+        # checkbox_var = [None] * N_sessions
+        # for i in range(N_sessions):
+        #     var = tk.IntVar()
+        #     tk.Checkbutton(tkroot, text=i, variable=var).pack()
+        #     checkbox_var[i] = var
+        # tk.Button(tkroot, text='Load', command=tkroot.quit).pack()
+        # tkroot.mainloop()
 
         headers = []
         # load header of first recording session
         print('reading first header...')
-        header=OEIO.get_header_from_folder(self.dirname, recording= None)
-        if header != None:
-            headers.append(header)
+        # header=OEIO.get_header_from_folder(self.dirname, recording= 1)
+        # if header != None:
+        #     headers.append(header)
         # load headers of next recording sessions
-        for i in range(2, N_sessions):
+        for i in range(1, N_sessions+1):
             print('reading header...', i)
             header = OEIO.get_header_from_folder(self.dirname, recording=i)
             if header != None:
                 headers.append(header)
 
+        header = headers[0]         # use first header for basic info and time
         # create an empty block
         block = Block( name = header['date_created'],
                        description=header['format'],
@@ -136,26 +139,48 @@ class Open_Ephys_IO(BaseIO):
                        rec_datetime=dt.datetime.strptime(header['date_created'], "'%d-%b-%Y %H%M%S'"),
                        file_origin=self.dirname)
         if cascade:
-            # read nested analosignal
-            # data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', dtype=float)
-            data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', recording= 2, dtype=float)
-            if data.size == 0:
-                print "Folder ", self.dirname, "is empty or can't be read"
-                return
-            if len(data.shape) ==1:
-                # just one single channel
-                n = 1
-            else:
-                # more than 1 channel
-                n = data.shape[1]
+            # read all selected recording sessions and concatenate with zero paddings
+            data_list = []
+            for i in range(1, N_sessions+1):
+                # read nested analosignal
+                print('--- reading recording session', i)
+                # data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', dtype=float)
+                data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', recording= i, dtype=float)
+                if data.size == 0:
+                    print "Folder ", self.dirname, 'recording session', i,  "is empty or can't be read"
+                    return
+                # get shape info from first rec session
+                if i == 1:
+                    if len(data.shape) ==1:
+                        # just one single channel
+                        n = 1
+                    else:
+                        # more than 1 channel
+                        n = data.shape[1]
+                else:
+                    # stack rec sessions with zero padding
+                    # get time between rec sessions and sr, index -2 and -1 because of different counting! recording starts at 1, python array at 0!
+                    rec_datetime_prev=dt.datetime.strptime(headers[i-2]['date_created'], "'%d-%b-%Y %H%M%S'")
+                    rec_datetime_curr=dt.datetime.strptime(headers[i-1]  ['date_created'], "'%d-%b-%Y %H%M%S'")
+                    sr=headers[i-2]['sampleRate']
+                    t = rec_datetime_curr - rec_datetime_prev
+                    # length of zero padding between recording sessions
+                    nz = np.floor(t.total_seconds()*sr)
+                    # np array for filling the gap
+                    z = np.zeros((int(nz), n))
+                    data_list.append(z)
 
+                data_list.append(data)
+
+            # stack all together
+            data_final = np.vstack(data_list)
             for i in range(n):
-                ana = AnalogSignal(signal=data[:,i],
+                ana = AnalogSignal(signal=data_final[:,i],
                                    units=pq.microvolt,
-                                   sampling_rate=header['sampleRate']*pq.Hz,
+                                   sampling_rate=headers[0]['sampleRate']*pq.Hz,
                                    name='analog signal '+ str(i),
                                    channel_index=i,
-                                   description=header['format'],
+                                   description=headers[0]['format'],
                                    file_origin= os.path.join(self.dirname,
                                                              filelist[i]))
                 seg.analogsignals += [ ana ]
