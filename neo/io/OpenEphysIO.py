@@ -30,10 +30,10 @@ from neo.io.baseio import BaseIO
 from neo.core import Block, Segment, AnalogSignal, SpikeTrain, EventArray
 
 # need to link to open-ephys/analysis-tools
-import os, sys
+import re, os, sys
 from neo.io import OpenEphys as OEIO
 
-import Tkinter as tk
+# import Tkinter as tk
 
 # I need to subclass BaseIO
 class Open_Ephys_IO(BaseIO):
@@ -57,6 +57,7 @@ class Open_Ephys_IO(BaseIO):
 
     has_header         = False
     is_streameable     = False
+
 
     # # This is for GUI stuff : a definition for parameters when reading.
     # # This dict should be keyed by object (`Block`). Each entry is a list
@@ -115,20 +116,21 @@ class Open_Ephys_IO(BaseIO):
         # read number or recording session in the current folder
         N_sessions = OEIO.get_number_of_recording_sessions(self.dirname)
 
-        tkroot = tk.Tk()
-        usr_rbutton = tk.IntVar()
-        usr_load_all = tk.IntVar()
-        if N_sessions > 1:
-            # ask which recording session to load
-            tk.Label(tkroot, text="Select the recording sessions you want to load:").pack()
-            tk.Label(tkroot, text=self.dirname).pack()
-            tk.Checkbutton(tkroot, text='load all recording sessions', variable=usr_load_all).pack()
-            tk.Label(tkroot, text="load only one recording session:").pack()
-            for i in range(1, N_sessions+1):
-                tk.Radiobutton(tkroot, text=i, variable=usr_rbutton, value = i).pack()
-            tk.Button(tkroot, text='Load', command=tkroot.quit).pack()
-            tkroot.mainloop()
-        tkroot.destroy()
+        # tkroot = tk._Tk()
+        # usr_rbutton = tk.IntVar()
+        # usr_load_all = tk.IntVar()
+        # if N_sessions > 1:
+        #     # ask which recording session to load
+        #     tk.Label(tkroot, text="Select the recording sessions you want to load:").pack()
+        #     tk.Label(tkroot, text=self.dirname).pack()
+        #     tk.Checkbutton(tkroot, text='load all recording sessions', variable=usr_load_all).pack()
+        #     tk.Label(tkroot, text="load only one recording session:").pack()
+        #     for i in range(1, N_sessions+1):
+        #         tk.Radiobutton(tkroot, text=i, variable=usr_rbutton, value=i).pack()
+        #     tk.Button(tkroot, text='Load', command=tkroot.quit).pack()
+        #     tkroot.mainloop()
+        # # tkroot.destroy()
+        # del tkroot
 
         headers = []
         # load header of first recording session
@@ -144,6 +146,8 @@ class Open_Ephys_IO(BaseIO):
                 headers.append(header)
 
         header = headers[0]         # use first header for basic info and time
+        sr = headers[i - 2]['sampleRate']   # get sr and use it for all recording sessions
+
         # create an empty block
         block = Block( name = header['date_created'],
                        description=header['format'],
@@ -156,16 +160,20 @@ class Open_Ephys_IO(BaseIO):
                        rec_datetime=dt.datetime.strptime(header['date_created'], "'%d-%b-%Y %H%M%S'"),
                        file_origin=self.dirname)
 
-        if usr_load_all.get() == 0:
-            i = usr_rbutton.get()
-            print '########################### user has selected session', i
+        # if usr_load_all.get() == 0:
+        if not cascade:
+            if N_sessions == 1:
+                i = None
+            # else:
+            #     i = usr_rbutton.get()
             print('--- reading recording session', i)
             data, filelist, n = self._load_recording_session(i)
             if n == 0:
                 return
             data_final = data
-
-        if usr_load_all.get() == 1:
+        duration = 0
+        # if usr_load_all.get() == 1:
+        if cascade:
             # read all selected recording sessions and concatenate with zero paddings
             data_list = []
             for i in range(1, N_sessions+1):    # counting starts at 1!
@@ -179,25 +187,26 @@ class Open_Ephys_IO(BaseIO):
                     # get time between rec sessions and sr, index -2 and -1 because of different counting! recording starts at 1, python array at 0!
                     rec_datetime_prev=dt.datetime.strptime(headers[i-2]['date_created'], "'%d-%b-%Y %H%M%S'")
                     rec_datetime_curr=dt.datetime.strptime(headers[i-1]  ['date_created'], "'%d-%b-%Y %H%M%S'")
-                    sr=headers[i-2]['sampleRate']
                     t = rec_datetime_curr - rec_datetime_prev
                     # length of zero padding between recording sessions
-                    nz = np.floor(t.total_seconds()*sr)
+                    nz = np.floor(t.total_seconds()*sr) - duration
                     # np array for filling the gap
                     z = np.zeros((int(nz), n))
                     data_list.append(z)
+                duration = len(data) # length of recording session
                 data_list.append(data)
 
             # stack all together
             data_final = np.vstack(data_list)
         for i in range(n):
-            ana = AnalogSignal(signal=data_final[:,i],
-                               units=pq.microvolt,
-                               sampling_rate=headers[0]['sampleRate']*pq.Hz,
-                               name='analog signal '+ str(i),
-                               channel_index=i,
-                               description=headers[0]['format'],
-                               file_origin= os.path.join(self.dirname,
+            name = re.findall(r'CH\d*', filelist[i])[0]
+            ana = AnalogSignal(signal           = data_final[:,i],
+                               units            = pq.microvolt,
+                               sampling_rate    = headers[0]['sampleRate']*pq.Hz,
+                               name             = name,
+                               channel_index    = i,
+                               description      = headers[0]['format'],
+                               file_origin      = os.path.join(self.dirname,
                                                          filelist[i]))
             seg.analogsignals += [ ana ]
         block.segments.append(seg)
