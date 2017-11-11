@@ -94,7 +94,7 @@ class Open_Ephys_IO(BaseIO):
     def _load_recording_session(self, i):
         data, filelist=OEIO.loadFolderToArray(self.dirname, channels='all', recording= i, dtype=float)
         if data.size == 0:
-            print "Folder ", self.dirname, 'recording session', i,  "is empty or can't be read"
+            print("Folder ", self.dirname, 'recording session', i,  "is empty or can't be read")
             return None, None, 0
         if len(data.shape) ==1:
             # just one single channel
